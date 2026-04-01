@@ -100,6 +100,13 @@ class PriceCatalogApiService {
     if (urlTemplate.isEmpty) {
       throw StateError('Set the catalog API URL first.');
     }
+    if (!urlTemplate.startsWith('https://') && !urlTemplate.startsWith('http://')) {
+      throw StateError(
+        'URL must start with https:// — stored value is: "$urlTemplate"\n'
+        'Go to Settings, clear the Catalog URL field, and re-enter:\n'
+        'https://api.starcitizen-api.com/{apikey}/v1/cache/ships',
+      );
+    }
     final method = await getMethod();
     final rootKey = await getJsonRootKey();
     final defaultPatch = await getDefaultPatch();
