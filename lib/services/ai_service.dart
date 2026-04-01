@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AiMessage {
@@ -104,11 +106,14 @@ class AiService {
       headers['Authorization'] = 'Bearer $key';
     }
 
-    final res = await http.post(
-      uri,
-      headers: headers,
-      body: jsonEncode(payload),
-    );
+    final httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+    final client = IOClient(httpClient);
+    final http.Response res;
+    try {
+      res = await client.post(uri, headers: headers, body: jsonEncode(payload));
+    } finally {
+      client.close();
+    }
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw StateError('API error ${res.statusCode}: ${res.body}');
@@ -170,11 +175,14 @@ class AiService {
       };
     }
 
-    final res = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
+    final httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 15);
+    final client = IOClient(httpClient);
+    final http.Response res;
+    try {
+      res = await client.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode(body));
+    } finally {
+      client.close();
+    }
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw StateError('Gemini API error ${res.statusCode}: ${res.body}');
