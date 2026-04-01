@@ -121,6 +121,14 @@ class PriceCatalogApiService {
       urlResolved = urlTemplate;
     }
 
+    if (urlResolved.contains('{apikey}')) {
+      throw StateError(
+        'Catalog URL still contains {apikey}. Set API auth to “Key in URL ({apikey}) — StarCitizen-API.com”, '
+        'paste your key in “API token / key”, tap Save API settings, then Sync now. '
+        '(While auth is “None”, the placeholder is sent literally and sync will fail.)',
+      );
+    }
+
     final uri = Uri.parse(urlResolved);
 
     final headers = <String, String>{
