@@ -38,32 +38,53 @@ class _AiChatPageState extends State<AiChatPage> {
     _scrollToEnd();
 
     try {
-      // Extract keywords from the user's message so the DB can prioritise
-      // relevant items within the token budget.
+      // Strip common English filler words so only item-name-like words remain.
+      // Without this, words like "where", "can", "buy" count as keywords and
+      // matchedOnly mode returns zero catalog rows (because no item is named "where").
+      const _stopwords = {
+        'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her',
+        'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how',
+        'its', 'may', 'now', 'see', 'two', 'use', 'way', 'who', 'did', 'let',
+        'put', 'say', 'she', 'too', 'use', 'that', 'this', 'with', 'have',
+        'from', 'they', 'will', 'been', 'more', 'when', 'your', 'what', 'some',
+        'into', 'than', 'then', 'here', 'were', 'also', 'each', 'does', 'most',
+        'where', 'there', 'their', 'about', 'which', 'would', 'could', 'should',
+        'price', 'much', 'cost', 'sell', 'sold', 'best', 'find', 'show', 'give',
+        'tell', 'need', 'want', 'look', 'know', 'like', 'just', 'make', 'good',
+        'buy', 'buying', 'selling', 'cheapest', 'cheapest', 'expensive', 'trade',
+        'trading', 'auec', 'item', 'items', 'station', 'location', 'locations',
+        'market', 'catalog', 'catalogue', 'data', 'info', 'list', 'show', 'have',
+      };
+
       final keywords = text
           .toLowerCase()
           .replaceAll(RegExp(r'[^\w\s]'), ' ')
           .split(RegExp(r'\s+'))
-          .where((w) => w.length > 2)
+          .where((w) => w.length > 2 && !_stopwords.contains(w))
           .toList();
 
-      // Groq free tier: tight TPM limits — when the user has typed keywords
-      // (e.g. "Killshot rifle") we only send matched items, which gives a much
-      // larger effective budget per item and avoids hitting the rate limiter.
-      // When no keywords are present we fall back to a small alphabetical slice.
-      // Other providers (OpenAI, local, Gemini, etc.): use full 20k budget.
       final groq = await _ai.isGroq();
-      final hasKeywords = keywords.isNotEmpty;
-      // If the user searched for something specific, matched-only mode fits
-      // comfortably under Groq's limit even for large catalogs.
-      final charBudget = groq ? (hasKeywords ? 12000 : 4000) : 20000;
-      final matchedOnly = groq && hasKeywords;
+      // Only use matched-only mode if we have real item-name keywords.
+      // If keywords is empty after stopword filtering the user asked a general
+      // question — fall back to the alphabetical slice so the AI still has data.
+      final hasItemKeywords = keywords.isNotEmpty;
+      final charBudget = groq ? (hasItemKeywords ? 12000 : 4000) : 20000;
+      final matchedOnly = groq && hasItemKeywords;
 
-      final catalog = await widget.db.catalogContextBlob(
+      // Get catalog, but if matchedOnly returns nothing (no item matched),
+      // fall back to the general slice so the AI isn't left with empty context.
+      String catalog = await widget.db.catalogContextBlob(
         charBudget: charBudget,
         keywords: keywords,
         matchedOnly: matchedOnly,
       );
+      if (catalog.trim() == '(catalog empty)' || catalog.trim().isEmpty) {
+        catalog = await widget.db.catalogContextBlob(
+          charBudget: groq ? 4000 : 20000,
+          keywords: const [],
+          matchedOnly: false,
+        );
+      }
       final logs = await widget.db.recentLogs(limit: 10);
       final logText = logs
           .map((e) => '${e.itemName}: ${e.price} aUEC @ ${e.loggedAt.toIso8601String()} (${e.logType})')
