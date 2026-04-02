@@ -304,7 +304,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _catMethod = 'get';
                       _catAuth = 'bearer';
                       _catUrl.text = PriceCatalogApiService.uexCommoditiesPricesAllUrl;
-                      _catRootKey.text = 'data';
+                      _catRootKey.clear();
                     });
                   },
                   child: const Text('UEX Commodities (aUEC)'),
@@ -315,7 +315,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       _catMethod = 'get';
                       _catAuth = 'bearer';
                       _catUrl.text = PriceCatalogApiService.uexItemsPricesAllUrl;
-                      _catRootKey.text = 'data';
+                      _catRootKey.clear();
                     });
                   },
                   child: const Text('UEX Items (aUEC)'),
