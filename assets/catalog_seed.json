@@ -1,18 +1,4 @@
 {
   "patch": "4.7",
-  "source_note": "Replace or import a full export. This seed is for UI/testing only.",
-  "items": [
-    {
-      "name": "Example: MedPen",
-      "offers": [
-        { "location": "Lorville — Tammany and Sons", "buy_auec": 110, "sell_auec": 96 }
-      ]
-    },
-    {
-      "name": "Example: QD Cooldown / travel consumable (rename me)",
-      "offers": [
-        { "location": "Area18 — Dumper's Depot", "buy_auec": null, "sell_auec": 1 }
-      ]
-    }
-  ]
+  "items": []
 }

@@ -232,24 +232,84 @@ class PriceCatalogApiService {
     }
 
     if (dataList.isEmpty) {
-      throw StateError(
-        'API returned an empty list. Check your API key at starcitizen-api.com, '
-        'or try /v1/live/ships instead of /v1/cache/ships.',
-      );
+      throw StateError('API returned an empty list. Check your API key or try a different endpoint.');
     }
 
-    // Check if it looks like a SC ships payload
     final firstValid = dataList.firstWhere((e) => e != null && e is Map, orElse: () => null);
-    if (firstValid != null) {
-      final fm = Map<String, dynamic>.from(firstValid as Map);
-      final looksLikeShip = fm.containsKey('name') && fm.keys.length > 2;
-      if (looksLikeShip) {
-        return shipsPayloadToCatalog(dataList, sourceLabel: sourceLabel);
-      }
+    if (firstValid == null) {
+      throw StateError('API returned a list but all entries are null.');
+    }
+    final fm = Map<String, dynamic>.from(firstValid as Map);
+
+    // UEX commodities_prices_all: rows have commodity_name + terminal_name + price_buy/price_sell
+    if (fm.containsKey('commodity_name') && fm.containsKey('terminal_name')) {
+      return _normalizeUexPrices(dataList, nameField: 'commodity_name', patch: defaultPatch);
+    }
+
+    // UEX items_prices_all: rows have item_name + terminal_name + price_buy/price_sell
+    if (fm.containsKey('item_name') && fm.containsKey('terminal_name')) {
+      return _normalizeUexPrices(dataList, nameField: 'item_name', patch: defaultPatch);
+    }
+
+    // SC ships API
+    if (fm.containsKey('name') && (fm.containsKey('beam') || fm.containsKey('compiled') || fm.containsKey('chassis_id'))) {
+      return shipsPayloadToCatalog(dataList, sourceLabel: sourceLabel);
     }
 
     // Fallback: treat as generic catalog items list
     return {'patch': defaultPatch, 'items': dataList};
+  }
+
+  /// Normalizes UEX flat price rows (one row per item per terminal) into
+  /// grouped catalog items with offers list.
+  static Map<String, dynamic> _normalizeUexPrices(
+    List<dynamic> rows, {
+    required String nameField,
+    required String patch,
+  }) {
+    // Group rows by item name
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final raw in rows) {
+      if (raw == null || raw is! Map) continue;
+      final row = Map<String, dynamic>.from(raw);
+      final name = row[nameField]?.toString().trim();
+      if (name == null || name.isEmpty) continue;
+      grouped.putIfAbsent(name, () => []).add(row);
+    }
+
+    final items = grouped.entries.map((entry) {
+      final offers = entry.value.map((row) {
+        final terminal = row['terminal_name']?.toString().trim() ?? '';
+        final city = row['city_name']?.toString().trim() ?? '';
+        final location = city.isNotEmpty ? '$terminal — $city' : terminal;
+        final buy = _toAuec(row['price_buy']);
+        final sell = _toAuec(row['price_sell']);
+        return {
+          'location': location.isEmpty ? 'Unknown' : location,
+          'buy_auec': buy,
+          'sell_auec': sell,
+        };
+      }).where((o) => (o['buy_auec'] != null || o['sell_auec'] != null)).toList();
+
+      return {
+        'name': entry.key,
+        'offers': offers,
+      };
+    }).toList();
+
+    return {'patch': patch, 'items': items};
+  }
+
+  static int? _toAuec(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v == 0 ? null : v;
+    if (v is num) return v == 0 ? null : v.round();
+    if (v is String) {
+      final n = num.tryParse(v);
+      if (n == null || n == 0) return null;
+      return n.round();
+    }
+    return null;
   }
 
   /// [starcitizen-api.com](https://starcitizen-api.com/) wraps lists in `{ success, data, source }`.

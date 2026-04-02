@@ -120,6 +120,34 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _clearCatalog() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear catalog?'),
+        content: const Text('This removes all catalog items and offers from the local database. Your logs, alerts and trades are not affected.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Clear')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _busy = true);
+    try {
+      await widget.db.clearCatalog();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Catalog cleared.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Clear failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _importFile() async {
     setState(() => _busy = true);
     try {
@@ -403,6 +431,12 @@ class _SettingsPageState extends State<SettingsPage> {
             TextButton(
               onPressed: _busy ? null : _reloadSeed,
               child: const Text('Re-import bundled seed (examples only)'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _busy ? null : _clearCatalog,
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+              child: const Text('Clear entire catalog…'),
             ),
             if (_busy) const Padding(
               padding: EdgeInsets.only(top: 16),

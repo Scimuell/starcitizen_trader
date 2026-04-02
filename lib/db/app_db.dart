@@ -240,6 +240,11 @@ CREATE TABLE trades (
     });
   }
 
+  Future<void> clearCatalog() async {
+    await _db.delete('catalog_offers');
+    await _db.delete('catalog_items');
+  }
+
   Future<int> catalogItemCount() async {
     final r = await _db.rawQuery('SELECT COUNT(1) AS c FROM catalog_items');
     return Sqflite.firstIntValue(r) ?? 0;
