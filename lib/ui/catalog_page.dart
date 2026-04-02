@@ -39,7 +39,7 @@ class _CatalogPageState extends State<CatalogPage> {
         Expanded(
           child: FutureBuilder<List<CatalogItemRow>>(
             key: ValueKey(_q.text),
-            future: widget.db.searchCatalog(_q.text.trim().isEmpty ? '%' : _q.text.trim()),
+            future: widget.db.searchCatalog(_q.text.trim()),
             builder: (context, snap) {
               if (!snap.hasData) return const Center(child: CircularProgressIndicator());
               final rows = snap.data!;

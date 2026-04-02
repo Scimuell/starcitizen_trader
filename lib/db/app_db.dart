@@ -260,15 +260,23 @@ CREATE TABLE trades (
     return Sqflite.firstIntValue(r) ?? 0;
   }
 
-  Future<List<CatalogItemRow>> searchCatalog(String query, {int limit = 100}) async {
-    final like = '%${query.replaceAll('%', '')}%';
-    final rows = await _db.query(
-      'catalog_items',
-      where: 'name LIKE ?',
-      whereArgs: [like],
-      orderBy: 'name COLLATE NOCASE ASC',
-      limit: limit,
-    );
+  Future<List<CatalogItemRow>> searchCatalog(String query, {int limit = 0}) async {
+    final trimmed = query.trim();
+    final List<Map<String, Object?>> rows;
+    if (trimmed.isEmpty || trimmed == '%') {
+      rows = await _db.query(
+        'catalog_items',
+        orderBy: 'name COLLATE NOCASE ASC',
+      );
+    } else {
+      final like = '%${trimmed.replaceAll('%', '').replaceAll('_', '')}%';
+      rows = await _db.query(
+        'catalog_items',
+        where: 'name LIKE ?',
+        whereArgs: [like],
+        orderBy: 'name COLLATE NOCASE ASC',
+      );
+    }
     return rows
         .map(
           (e) => CatalogItemRow(
