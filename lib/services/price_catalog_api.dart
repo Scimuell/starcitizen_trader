@@ -96,7 +96,7 @@ class PriceCatalogApiService {
   static const starcitizenApiComShipsCacheUrlTemplate =
       'https://api.starcitizen-api.com/{apikey}/v1/cache/ships';
 
-  /// UEX commodities prices (aUEC buy/sell per terminal) — best for in-game trading.
+  /// UEX commodities prices (aUEC buy/sell per terminal) â€” best for in-game trading.
   static const uexCommoditiesPricesAllUrl =
       'https://api.uexcorp.space/2.0/commodities_prices_all';
 
@@ -112,7 +112,7 @@ class PriceCatalogApiService {
     }
     if (!urlTemplate.startsWith('https://') && !urlTemplate.startsWith('http://')) {
       throw StateError(
-        'URL must start with https:// — stored value is: "$urlTemplate"\n'
+        'URL must start with https:// â€” stored value is: "$urlTemplate"\n'
         'Go to Settings, clear the Catalog URL field, and re-enter:\n'
         'https://api.starcitizen-api.com/{apikey}/v1/cache/ships',
       );
@@ -126,7 +126,7 @@ class PriceCatalogApiService {
     late final String urlResolved;
     if (authMode == 'path_key') {
       if (secret.isEmpty) {
-        throw StateError('Paste your API key into “API token / key” when using key-in-URL mode.');
+        throw StateError('Paste your API key into â€œAPI token / keyâ€ when using key-in-URL mode.');
       }
       if (!urlTemplate.contains('{apikey}')) {
         throw StateError(
@@ -141,9 +141,9 @@ class PriceCatalogApiService {
 
     if (urlResolved.contains('{apikey}')) {
       throw StateError(
-        'Catalog URL still contains {apikey}. Set API auth to “Key in URL ({apikey}) — StarCitizen-API.com”, '
-        'paste your key in “API token / key”, tap Save API settings, then Sync now. '
-        '(While auth is “None”, the placeholder is sent literally and sync will fail.)',
+        'Catalog URL still contains {apikey}. Set API auth to â€œKey in URL ({apikey}) â€” StarCitizen-API.comâ€, '
+        'paste your key in â€œAPI token / keyâ€, tap Save API settings, then Sync now. '
+        '(While auth is â€œNoneâ€, the placeholder is sent literally and sync will fail.)',
       );
     }
 
@@ -281,7 +281,7 @@ class PriceCatalogApiService {
       final offers = entry.value.map((row) {
         final terminal = row['terminal_name']?.toString().trim() ?? '';
         final city = row['city_name']?.toString().trim() ?? '';
-        final location = city.isNotEmpty ? '$terminal — $city' : terminal;
+        final location = city.isNotEmpty ? '$terminal â€” $city' : terminal;
         final buy = _toAuec(row['price_buy']);
         final sell = _toAuec(row['price_sell']);
         return {
@@ -365,7 +365,7 @@ class PriceCatalogApiService {
           },
           'offers': [
             {
-              'location': 'RSI website — $usdLabel',
+              'location': 'RSI website â€” $usdLabel',
               'buy_auec': null,
               'sell_auec': null,
             },
