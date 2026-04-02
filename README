@@ -1,0 +1,21 @@
+1) Install Flutter and Android tooling (Android Studio + SDK + accept licenses).
+
+2) In this folder, generate the Android/iOS wrapper projects (keeps your lib/ + pubspec):
+   flutter create .
+
+3) Fetch packages:
+   flutter pub get
+
+4) Debug on a device/emulator:
+   flutter run
+
+5) Release APK:
+   flutter build apk
+
+Notes:
+- The "Ask AI" tab needs network permission (default in Flutter templates) and a key/base URL in Settings.
+- Full patch 4.7 wiki data is not bundled: use Settings -> Import catalog JSON (offline file you create or export legally).
+
+Optional — build in the cloud (no local Flutter):
+- Treat this folder (where pubspec.yaml is) as the Git repo root.
+- Push to GitHub. Open Actions → "Build Android APK" → run workflow → download the "app-release-apk" artifact (ZIP contains the APK).
