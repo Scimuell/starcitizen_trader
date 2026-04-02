@@ -107,9 +107,13 @@ class _SettingsPageState extends State<SettingsPage> {
       final map = await _priceApi.fetchCatalog();
       await widget.db.importCatalogJson(map);
       final count = await widget.db.catalogItemCount();
+      final itemList = map['items'] as List?;
+      final firstName = (itemList != null && itemList.isNotEmpty)
+          ? (itemList.first['name']?.toString() ?? 'no name field')
+          : 'list empty';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Synced. Catalog now has \$count items. Keys in response: \${map.keys.join(', ')}. First item name: \${(map['items'] as List?)?.isNotEmpty == true ? (map['items'] as List).first['name'] : 'none'}')),
+          SnackBar(content: Text('Synced. DB has $count items. First: $firstName')),
         );
       }
     } catch (e) {
