@@ -249,24 +249,50 @@ class _SettingsPageState extends State<SettingsPage> {
             Text('Price catalog API (your site)', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'Point this at an HTTP endpoint that returns JSON. The app downloads once per sync and stores rows locally (works offline afterward). '
-              'StarCitizen-API.com puts your key in the path — pick “Key in URL” and use the template below (ships list uses pledge USD, not aUEC).',
+              'Sync commodity/item prices (aUEC) via UEX, or ship specs via StarCitizen-API.com. '
+              'Tap a preset below to auto-fill the URL and auth settings, then paste your API key.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () {
-                  setState(() {
-                    _catMethod = 'get';
-                    _catAuth = 'path_key';
-                    _catUrl.text = PriceCatalogApiService.starcitizenApiComShipsCacheUrlTemplate;
-                    _catRootKey.clear();
-                  });
-                },
-                child: const Text('Fill StarCitizen-API.com ships URL (v1/cache/ships)'),
-              ),
+            Text('Quick fill preset:', style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _catMethod = 'get';
+                      _catAuth = 'path_key';
+                      _catUrl.text = PriceCatalogApiService.starcitizenApiComShipsCacheUrlTemplate;
+                      _catRootKey.clear();
+                    });
+                  },
+                  child: const Text('SC-API Ships (USD)'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _catMethod = 'get';
+                      _catAuth = 'bearer';
+                      _catUrl.text = PriceCatalogApiService.uexCommoditiesPricesAllUrl;
+                      _catRootKey.text = 'data';
+                    });
+                  },
+                  child: const Text('UEX Commodities (aUEC)'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _catMethod = 'get';
+                      _catAuth = 'bearer';
+                      _catUrl.text = PriceCatalogApiService.uexItemsPricesAllUrl;
+                      _catRootKey.text = 'data';
+                    });
+                  },
+                  child: const Text('UEX Items (aUEC)'),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             TextField(

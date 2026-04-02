@@ -96,6 +96,14 @@ class PriceCatalogApiService {
   static const starcitizenApiComShipsCacheUrlTemplate =
       'https://api.starcitizen-api.com/{apikey}/v1/cache/ships';
 
+  /// UEX commodities prices (aUEC buy/sell per terminal) — best for in-game trading.
+  static const uexCommoditiesPricesAllUrl =
+      'https://api.uexcorp.space/2.0/commodities_prices_all';
+
+  /// UEX items prices (gear, weapons, consumables, components).
+  static const uexItemsPricesAllUrl =
+      'https://api.uexcorp.space/2.0/items_prices_all';
+
   /// Performs HTTP request and returns a map suitable for [importCatalogJson].
   Future<Map<String, dynamic>> fetchCatalog() async {
     final urlTemplate = (await getUrl()).trim();
