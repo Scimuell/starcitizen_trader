@@ -242,21 +242,32 @@ class RareMaterialsPage extends StatefulWidget {
 
 class _RareMaterialsPageState extends State<RareMaterialsPage> {
   String _filter = '';
+  String _rarityFilter = 'All';
+
+  Color _matChipColor(String r, BuildContext context) {
+    switch (r) {
+      case 'Very Rare': return const Color(0xFFB44FFF);
+      case 'Rare': return const Color(0xFF4FC3F7);
+      case 'Uncommon': return const Color(0xFF00FF9C);
+      case 'Common': return Theme.of(context).colorScheme.onSurface;
+      default: return Theme.of(context).colorScheme.primary;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final cyan = Theme.of(context).colorScheme.primary;
     final outline = Theme.of(context).colorScheme.outline;
 
-    final filtered = _filter.isEmpty
-        ? _kMaterials
-        : _kMaterials
-            .where((m) =>
-                m.name.toLowerCase().contains(_filter) ||
-                m.category.toLowerCase().contains(_filter) ||
-                m.rarity.toLowerCase().contains(_filter) ||
-                m.locations.any((l) => l.name.toLowerCase().contains(_filter)))
-            .toList();
+    final filtered = _kMaterials.where((m) {
+      final matchesText = _filter.isEmpty ||
+          m.name.toLowerCase().contains(_filter) ||
+          m.category.toLowerCase().contains(_filter) ||
+          m.rarity.toLowerCase().contains(_filter) ||
+          m.locations.any((l) => l.name.toLowerCase().contains(_filter));
+      final matchesRarity = _rarityFilter == 'All' || m.rarity == _rarityFilter;
+      return matchesText && matchesRarity;
+    }).toList();
 
     return Scaffold(
       body: Column(
@@ -279,6 +290,37 @@ class _RareMaterialsPageState extends State<RareMaterialsPage> {
                       )
                     : null,
               ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: ['All', 'Very Rare', 'Rare', 'Uncommon', 'Common'].map((r) {
+                final selected = _rarityFilter == r;
+                final color = _matChipColor(r, context);
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _rarityFilter = r),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected ? color.withValues(alpha: 0.2) : Colors.transparent,
+                        border: Border.all(color: selected ? color : Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(r.toUpperCase(),
+                          style: TextStyle(
+                              color: selected ? color : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              fontSize: 10, letterSpacing: 1.5,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w400)),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
           Padding(
@@ -477,95 +519,4 @@ class _MaterialCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('WHERE TO FIND',
-                      style: TextStyle(
-                          fontSize: 9,
-                          letterSpacing: 1.5,
-                          color: cyan.withValues(alpha: 0.7),
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  ...mat.locations.map((l) {
-                    final riskColor = _riskColor(l.risk);
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(color: riskColor, shape: BoxShape.circle),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(l.name,
-                                    style: const TextStyle(
-                                        fontSize: 12, fontWeight: FontWeight.w600)),
-                                Text(
-                                  '${l.notes}  •  Risk: ${l.risk.label}',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.6)),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PriceChip extends StatelessWidget {
-  const _PriceChip({required this.label, required this.value, required this.color});
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 9,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(width: 6),
-          Text(value,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'monospace')),
-        ],
-      ),
-    );
-  }
-}
+                crossAxi
