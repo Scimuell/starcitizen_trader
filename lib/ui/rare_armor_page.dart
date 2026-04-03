@@ -181,21 +181,32 @@ class RareArmorPage extends StatefulWidget {
 
 class _RareArmorPageState extends State<RareArmorPage> {
   String _filter = '';
+  String _rarityFilter = 'All';
+
+  Color _armorChipColor(String r, BuildContext context) {
+    switch (r) {
+      case 'Boss Loot': return const Color(0xFFFF6B35);
+      case 'Very Rare': return const Color(0xFFB44FFF);
+      case 'Rare': return const Color(0xFF4FC3F7);
+      case 'Uncommon': return const Color(0xFF00FF9C);
+      default: return Theme.of(context).colorScheme.primary;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final cyan = Theme.of(context).colorScheme.primary;
     final outline = Theme.of(context).colorScheme.outline;
 
-    final filtered = _filter.isEmpty
-        ? _kRareArmors
-        : _kRareArmors
-            .where((a) =>
-                a.name.toLowerCase().contains(_filter) ||
-                a.type.toLowerCase().contains(_filter) ||
-                a.rarity.toLowerCase().contains(_filter) ||
-                a.locations.any((l) => l.name.toLowerCase().contains(_filter)))
-            .toList();
+    final filtered = _kRareArmors.where((a) {
+      final matchesText = _filter.isEmpty ||
+          a.name.toLowerCase().contains(_filter) ||
+          a.type.toLowerCase().contains(_filter) ||
+          a.rarity.toLowerCase().contains(_filter) ||
+          a.locations.any((l) => l.name.toLowerCase().contains(_filter));
+      final matchesRarity = _rarityFilter == 'All' || a.rarity == _rarityFilter;
+      return matchesText && matchesRarity;
+    }).toList();
 
     return Scaffold(
       body: Column(
@@ -205,7 +216,7 @@ class _RareArmorPageState extends State<RareArmorPage> {
             child: TextField(
               onChanged: (v) => setState(() => _filter = v.toLowerCase().trim()),
               decoration: InputDecoration(
-                hintText: 'Search armor name, type, location…',
+                hintText: 'SEARCH ARMOUR...',
                 prefixIcon: const Icon(Icons.search, size: 18),
                 suffixIcon: _filter.isNotEmpty
                     ? IconButton(
@@ -216,6 +227,37 @@ class _RareArmorPageState extends State<RareArmorPage> {
                 isDense: true,
                 border: const OutlineInputBorder(),
               ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: ['All', 'Boss Loot', 'Very Rare', 'Rare', 'Uncommon'].map((r) {
+                final selected = _rarityFilter == r;
+                final color = _armorChipColor(r, context);
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _rarityFilter = r),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected ? color.withValues(alpha: 0.2) : Colors.transparent,
+                        border: Border.all(color: selected ? color : Theme.of(context).colorScheme.outline.withValues(alpha: 0.5)),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(r.toUpperCase(),
+                          style: TextStyle(
+                              color: selected ? color : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                              fontSize: 10, letterSpacing: 1.5,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w400)),
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
           Padding(
