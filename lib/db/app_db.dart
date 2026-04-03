@@ -260,7 +260,51 @@ CREATE TABLE trades (
     return Sqflite.firstIntValue(r) ?? 0;
   }
 
-  Future<List<CatalogItemRow>> searchCatalog(String query, {int limit = 0}) async {
+  /// Infers a display category from the item name for filtering.
+  static String inferCategory(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('cannon') || n.contains('laser') || n.contains('gun') ||
+        n.contains('rifle') || n.contains('pistol') || n.contains('shotgun') ||
+        n.contains('smg') || n.contains('lmg') || n.contains('sniper') ||
+        n.contains('railgun') || n.contains('grenade') || n.contains('missile') ||
+        n.contains('torpedo') || n.contains('rocket') || n.contains('repeater') ||
+        n.contains('gatling') || n.contains('neutron')) return 'WEAPONS';
+    if (n.contains('armor') || n.contains('armour') || n.contains('helmet') ||
+        n.contains('undersuit') || n.contains('suit') || n.contains('backpack') ||
+        n.contains('clothing') || n.contains('jacket') || n.contains('gloves') ||
+        n.contains('boots')) return 'CLOTHING';
+    if (n.contains('shield') || n.contains('power plant') || n.contains('quantum') ||
+        n.contains('cooler') || n.contains('fuel') || n.contains('thruster') ||
+        n.contains('avionics') || n.contains('landing') || n.contains('radar') ||
+        n.contains('tractor') || n.contains('mining laser') || n.contains('salvage') ||
+        n.contains('countermeasure') || n.contains('decoy') || n.contains('emp') ||
+        n.contains('jump module')) return 'SHIP PARTS';
+    if (n.contains('medical') || n.contains('medpen') || n.contains('stim') ||
+        n.contains('drug') || n.contains('heal') || n.contains('trauma') ||
+        n.contains('injector')) return 'MEDICAL';
+    if (n.contains('food') || n.contains('drink') || n.contains('water') ||
+        n.contains('ration') || n.contains('meal') || n.contains('snack') ||
+        n.contains('beverage') || n.contains('alcohol') || n.contains('coffee')) return 'FOOD';
+    if (n.contains('agricium') || n.contains('aluminum') || n.contains('beryl') ||
+        n.contains('bexalite') || n.contains('borase') || n.contains('carbon') ||
+        n.contains('chlorine') || n.contains('coalt') || n.contains('copper') ||
+        n.contains('diamond') || n.contains('flourine') || n.contains('gold') ||
+        n.contains('hephaes') || n.contains('hydrogen') || n.contains('iodine') ||
+        n.contains('iron') || n.contains('laranite') || n.contains('luminum') ||
+        n.contains('quantanium') || n.contains('quartz') || n.contains('silicon') ||
+        n.contains('taranite') || n.contains('titanium') || n.contains('tungsten') ||
+        n.contains('hadanite') || n.contains('aphorite') || n.contains('dolivine') ||
+        n.contains('luminite') || n.contains('ore') || n.contains('mineral') ||
+        n.contains('gem')) return 'COMMODITIES';
+    if (n.contains('ammo') || n.contains('ammunition') || n.contains('rounds') ||
+        n.contains('magazine') || n.contains('shells')) return 'AMMO';
+    if (n.contains('utility') || n.contains('tool') || n.contains('multitool') ||
+        n.contains('knife') || n.contains('flashlight') || n.contains('flare') ||
+        n.contains('gadget') || n.contains('device')) return 'UTILITY';
+    return 'OTHER';
+  }
+
+  Future<List<CatalogItemRow>> searchCatalog(String query, {int limit = 0, String category = 'ALL'}) async {
     final trimmed = query.trim();
     final List<Map<String, Object?>> rows;
     if (trimmed.isEmpty || trimmed == '%') {
@@ -277,7 +321,7 @@ CREATE TABLE trades (
         orderBy: 'name COLLATE NOCASE ASC',
       );
     }
-    return rows
+    final allRows = rows
         .map(
           (e) => CatalogItemRow(
             id: e['id'] as int,
@@ -287,6 +331,8 @@ CREATE TABLE trades (
           ),
         )
         .toList();
+    if (category == 'ALL') return allRows;
+    return allRows.where((r) => inferCategory(r.name) == category).toList();
   }
 
   Future<List<CatalogOfferRow>> offersForItem(int itemId) async {
@@ -328,7 +374,7 @@ CREATE TABLE trades (
   /// format so the AI can see everything within token limits.
   /// Format: ItemName:BUYb/SELLs[Loc1,Loc2,...] — ~8x smaller than verbose.
   Future<String> catalogContextBlob({
-    int charBudget = 40000,
+    int charBudget = 8000,  // ~2000 tokens — safe for Groq free tier
     List<String> keywords = const [],
     bool matchedOnly = false,
   }) async {
@@ -384,14 +430,22 @@ CREATE TABLE trades (
           final s = sell is int ? sell : (sell as num).toInt();
           if (maxSell == null || s > maxSell) maxSell = s;
         }
-        // Shorten location: strip common suffixes and long words
+        // Aggressively shorten location names to save tokens
         final shortLoc = loc
-            .replaceAll(' — ', '-')
+            .replaceAll(' — ', '/')
             .replaceAll('Terminal', 'T')
             .replaceAll('Station', 'Sta')
+            .replaceAll('Distribution Center', 'DC')
             .replaceAll('Distribution', 'Dist')
             .replaceAll('Center', 'Ctr')
-            .replaceAll('Outpost', 'OP');
+            .replaceAll('Outpost', 'OP')
+            .replaceAll('Commodity', 'Com')
+            .replaceAll('Trading', 'Trd')
+            .replaceAll('New Babbage', 'NB')
+            .replaceAll('Area18', 'A18')
+            .replaceAll('Lorville', 'LV')
+            .replaceAll('microTech', 'mT')
+            .replaceAll('Hurston', 'Hurs');
         if (shortLoc.isNotEmpty && !locs.contains(shortLoc)) {
           locs.add(shortLoc);
         }
