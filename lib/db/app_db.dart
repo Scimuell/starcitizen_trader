@@ -332,13 +332,27 @@ CREATE TABLE trades (
     List<String> keywords = const [],
     bool matchedOnly = false,
   }) async {
-    const sql = '''
+    // Exclude ship components/missiles from AI context to save tokens.
+    // These are still visible in the main Catalog tab.
+    const _aiExcludePatterns = [
+      'laser cannon', 'ballistic cannon', 'gatling', 'neutron repeater',
+      'missile', 'torpedo', 'shield generator', 'power plant', 'quantum drive',
+      'cooler', 'fuel intake', 'fuel tank', 'jump module', 'radar',
+      'tractor beam', 'mining laser', 'salvage module', 'countermeasure',
+      'decoy flare', 'noise field', 'emp', 'thruster', 'avionics',
+      'flight computer', 'landing gear', 'quantum dampener',
+    ];
+    final excWhere = _aiExcludePatterns.map((_) => "LOWER(ci.name) NOT LIKE ?").join(' AND ');
+    final excArgs = _aiExcludePatterns.map((k) => '%$k%').toList();
+
+    final sql = '''
       SELECT ci.name, co.location, co.buy_auec, co.sell_auec
       FROM catalog_items ci
       LEFT JOIN catalog_offers co ON co.item_id = ci.id
+      WHERE $excWhere
       ORDER BY ci.name COLLATE NOCASE ASC
     ''';
-    final rows = await _db.rawQuery(sql);
+    final rows = await _db.rawQuery(sql, excArgs);
     if (rows.isEmpty) return '(catalog empty)';
 
     // Group offers by item name
