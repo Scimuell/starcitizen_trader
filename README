@@ -1,8 +1,17 @@
-Go to the settings page and add your OpenAI API or GroqAI API key.
-Add your UEX API for commodities and items.
-Add your Supabase anon key and project URL.
-Enable toggle on Supabase AI mode.
+1. Go to the settings page and add your OpenAI API or GroqAI API key.
+2. Add your UEX API for commodities and items.
+3. Create a project on https://supabase.com, on SQL editor paste: 
+      create table catalog_offers (
+        id bigint generated always as identity primary key,
+        item_name text not null,
+        patch text default '4.7',
+        location text not null,
+        buy_auec bigint,
+        sell_auec bigint
+      );
+      create index on catalog_offers (item_name);
+4. Add your Supabase anon key and project URL.
+5. Enable toggle on Supabase AI mode.
 
 This will give you access to all StarCitizen items, along with an AI agent to help you locate items more easily.
-
 Supabase is used to reduce API token usage. Without it, a single query may use around 17,000 tokens.
