@@ -185,6 +185,10 @@ CREATE TABLE trades (
 
   Future<void> close() => _db.close();
 
+  /// Exposes raw SQL queries for services that need direct DB access (e.g. Supabase sync).
+  Future<List<Map<String, Object?>>> rawQuery(String sql, [List<Object?>? args]) =>
+      _db.rawQuery(sql, args);
+
   // --- Catalog ---
 
   Future<void> importCatalogJson(Map<String, dynamic> json) async {
@@ -374,7 +378,7 @@ CREATE TABLE trades (
   /// format so the AI can see everything within token limits.
   /// Format: ItemName:BUYb/SELLs[Loc1,Loc2,...] — ~8x smaller than verbose.
   Future<String> catalogContextBlob({
-    int charBudget = 8000,  // ~2000 tokens — safe for Groq free tier
+    int charBudget = 200000,  // No practical limit — send full catalog
     List<String> keywords = const [],
     bool matchedOnly = false,
   }) async {
@@ -457,7 +461,7 @@ CREATE TABLE trades (
       final line = '$name:$buyStr/$sellStr[$locStr]\n';
       buf.write(line);
 
-      if (buf.length >= charBudget) break;
+      if (charBudget > 0 && buf.length >= charBudget) break;
     }
 
     return buf.toString();

@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../db/app_db.dart';
 import '../services/ai_service.dart';
 import '../services/price_catalog_api.dart';
+import '../services/supabase_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key, required this.db});
@@ -34,7 +35,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   var _showKey = false;
   var _showCatSecret = false;
+  var _showSupaKey = false;
   var _busy = false;
+
+  // Supabase
+  final _supaUrl = TextEditingController();
+  final _supaKey = TextEditingController();
+  var _supaEnabled = false;
+  final _supa = SupabaseService.instance;
   String _aiProvider = 'openai';
   String _catMethod = 'get';
   String _catAuth = 'none';
@@ -61,6 +69,11 @@ class _SettingsPageState extends State<SettingsPage> {
     final cs = await _priceApi.getSecret();
     _catSecret.text = cs ?? '';
 
+    _supaUrl.text = await _supa.getUrl();
+    final sk = await _supa.getAnonKey();
+    _supaKey.text = sk ?? '';
+    _supaEnabled = await _supa.isEnabled();
+
     if (mounted) setState(() {});
   }
 
@@ -74,6 +87,8 @@ class _SettingsPageState extends State<SettingsPage> {
     _catPatch.dispose();
     _catPostBody.dispose();
     _catSecret.dispose();
+    _supaUrl.dispose();
+    _supaKey.dispose();
     super.dispose();
   }
 
@@ -87,7 +102,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  /// One-tap Groq setup: fills Base URL and Model fields with Groq defaults.
+  /// One-tap Groq setup.
   void _fillGroqDefaults() {
     setState(() {
       _aiProvider = 'openai';
@@ -95,7 +110,19 @@ class _SettingsPageState extends State<SettingsPage> {
       _model.text = AiService.groqDefaultModel;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Groq defaults filled — paste your API key then tap Save AI settings.')),
+      const SnackBar(content: Text('Groq defaults filled — paste your API key then tap Save.')),
+    );
+  }
+
+  /// One-tap OpenAI setup — gpt-4o-mini is fast, cheap and great for catalog queries.
+  void _fillOpenAiDefaults() {
+    setState(() {
+      _aiProvider = 'openai';
+      _base.text = 'https://api.openai.com';
+      _model.text = 'gpt-4o-mini';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('OpenAI defaults filled — paste your API key then tap Save.')),
     );
   }
 
@@ -159,6 +186,47 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Clear failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _saveSupabase() async {
+    await _supa.setUrl(_supaUrl.text.trim());
+    await _supa.setAnonKey(_supaKey.text.trim());
+    await _supa.setEnabled(_supaEnabled);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Supabase settings saved.')),
+      );
+    }
+  }
+
+  Future<void> _testSupabase() async {
+    setState(() => _busy = true);
+    await _saveSupabase();
+    try {
+      final err = await _supa.testConnection();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(err == null ? 'Connected to Supabase successfully.' : err),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _uploadToSupabase() async {
+    setState(() => _busy = true);
+    await _saveSupabase();
+    try {
+      final result = await _supa.uploadCatalog(widget.db);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result.message)),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -296,7 +364,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 OutlinedButton.icon(
                   onPressed: _fillGroqDefaults,
                   icon: const Icon(Icons.bolt, size: 16),
-                  label: const Text('Use Groq'),
+                  label: const Text('Groq'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _fillOpenAiDefaults,
+                  icon: const Icon(Icons.smart_toy_outlined, size: 16),
+                  label: const Text('OpenAI'),
                 ),
               ],
             ),
@@ -469,6 +543,84 @@ class _SettingsPageState extends State<SettingsPage> {
               padding: EdgeInsets.only(top: 16),
               child: Center(child: CircularProgressIndicator()),
             ),
+
+            // ── Supabase AI section ──────────────────────────────────────
+            const SizedBox(height: 28),
+            Row(children: [
+              Container(width: 2, height: 14, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text('SUPABASE AI MODE', style: Theme.of(context).textTheme.titleMedium),
+            ]),
+            const SizedBox(height: 8),
+            Text(
+              'Connect to Supabase so the AI only fetches relevant catalog rows per query — '
+              'dramatically reduces tokens used with OpenAI. Upload your catalog once, '
+              'then the AI searches it smartly instead of sending everything.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              value: _supaEnabled,
+              onChanged: (v) => setState(() => _supaEnabled = v),
+              title: const Text('Enable Supabase AI context', style: TextStyle(fontSize: 13)),
+              subtitle: Text(
+                _supaEnabled ? 'AI will query Supabase for smart context' : 'AI uses full local catalog',
+                style: const TextStyle(fontSize: 11),
+              ),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _supaUrl,
+              decoration: const InputDecoration(
+                labelText: 'SUPABASE PROJECT URL',
+                hintText: 'https://xxxx.supabase.co',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _supaKey,
+              obscureText: !_showSupaKey,
+              decoration: InputDecoration(
+                labelText: 'SUPABASE ANON KEY',
+                suffixIcon: IconButton(
+                  onPressed: () => setState(() => _showSupaKey = !_showSupaKey),
+                  icon: Icon(_showSupaKey ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _busy ? null : _testSupabase,
+                  child: const Text('TEST CONNECTION'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  onPressed: _busy ? null : _saveSupabase,
+                  child: const Text('SAVE'),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : _uploadToSupabase,
+                icon: const Icon(Icons.cloud_upload_outlined, size: 16),
+                label: const Text('UPLOAD CATALOG TO SUPABASE'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Upload once after each UEX sync. The AI will then query Supabase instead of '
+              'sending the full catalog, saving tokens on every message.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),

@@ -24,7 +24,7 @@ class StarcitizenTraderApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SC Trader',
+      title: 'StarMarket',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
       home: HomeShell(db: db),

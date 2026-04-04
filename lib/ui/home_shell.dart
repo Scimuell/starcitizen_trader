@@ -159,10 +159,47 @@ class _AppBarTitle extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 3, height: 16, color: cyan),
+        // SC-style diamond logo mark
+        CustomPaint(
+          size: const Size(16, 16),
+          painter: _DiamondPainter(color: cyan),
+        ),
         const SizedBox(width: 8),
         Text(title),
       ],
     );
   }
+}
+
+class _DiamondPainter extends CustomPainter {
+  const _DiamondPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final fillPaint = Paint()
+      ..color = color.withValues(alpha: 0.2)
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height / 2)
+      ..lineTo(size.width / 2, size.height)
+      ..lineTo(0, size.height / 2)
+      ..close();
+    canvas.drawPath(path, fillPaint);
+    canvas.drawPath(path, paint);
+    // Inner cross lines like SC logo
+    final linePaint = Paint()
+      ..color = color.withValues(alpha: 0.6)
+      ..strokeWidth = 0.8;
+    canvas.drawLine(Offset(size.width / 2, 0), Offset(size.width / 2, size.height), linePaint);
+    canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), linePaint);
+  }
+
+  @override
+  bool shouldRepaint(_DiamondPainter old) => old.color != color;
 }

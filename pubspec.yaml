@@ -1,5 +1,5 @@
 name: starcitizen_trader
-description: Solo Star Citizen price log, alerts on app open, and local-data AI chat.
+description: StarMarket — Star Citizen trade companion with offline catalog and AI advisor.
 publish_to: "none"
 version: 0.1.0+1
 
@@ -19,6 +19,7 @@ dependencies:
   http: ^1.2.2
   file_picker: ^8.1.4
   shared_preferences: ^2.3.2
+  supabase_flutter: ^2.5.6
 
 dev_dependencies:
   flutter_test:
