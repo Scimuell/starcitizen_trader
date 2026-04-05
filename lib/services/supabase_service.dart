@@ -18,6 +18,29 @@ import '../db/app_db.dart';
 /// );
 /// create index on catalog_offers (item_name);
 /// create index on catalog_offers (location);
+///
+/// create table sc_locations (
+///   id bigint generated always as identity primary key,
+///   location_name text not null unique,
+///   system_name text not null,
+///   location_type text,
+///   parent_location text,
+///   aliases text,
+///   notes text
+/// );
+/// create index on sc_locations (location_name);
+/// create index on sc_locations (system_name);
+///
+/// create table sc_location_distances (
+///   id bigint generated always as identity primary key,
+///   from_location text not null,
+///   to_location text not null,
+///   distance_rank int not null,
+///   distance_label text,
+///   travel_note text
+/// );
+/// create index on sc_location_distances (from_location);
+/// create index on sc_location_distances (to_location);
 /// ```
 class SupabaseService {
   static const _kUrl = 'supabase_url';
@@ -165,6 +188,118 @@ class SupabaseService {
     'station', 'terminal', 'location', 'please', 'would', 'could',
   };
 
+  List<String> _extractLocationTerms(String query) {
+    final q = query.toLowerCase();
+    final locationTerms = <String>[];
+    for (final entry in _locationAliases.entries) {
+      if (q.contains(entry.key)) {
+        locationTerms.addAll(entry.value);
+      }
+    }
+    return locationTerms.toSet().toList();
+  }
+
+  Future<String> _buildLocationContext(
+    SupabaseClient client,
+    List<String> locationTerms,
+  ) async {
+    if (locationTerms.isEmpty) return '';
+
+    try {
+      final locationRows = <Map<String, dynamic>>[];
+      final distanceRows = <Map<String, dynamic>>[];
+
+      for (final term in locationTerms.take(4)) {
+        final locResult = await client
+            .from('sc_locations')
+            .select(
+              'location_name, system_name, location_type, parent_location, aliases, notes',
+            )
+            .or(
+              'location_name.ilike.%$term%,aliases.ilike.%$term%,parent_location.ilike.%$term%',
+            )
+            .limit(8);
+        locationRows.addAll(List<Map<String, dynamic>>.from(locResult));
+
+        final distResult = await client
+            .from('sc_location_distances')
+            .select(
+              'from_location, to_location, distance_rank, distance_label, travel_note',
+            )
+            .or(
+              'from_location.ilike.%$term%,to_location.ilike.%$term%',
+            )
+            .order('distance_rank', ascending: true)
+            .limit(12);
+        distanceRows.addAll(List<Map<String, dynamic>>.from(distResult));
+      }
+
+      if (locationRows.isEmpty && distanceRows.isEmpty) return '';
+
+      final dedupedLocations = <String, Map<String, dynamic>>{};
+      for (final row in locationRows) {
+        final key = (row['location_name'] as String? ?? '').trim().toLowerCase();
+        if (key.isNotEmpty) dedupedLocations[key] = row;
+      }
+
+      final seenDistances = <String>{};
+      final dedupedDistances = <Map<String, dynamic>>[];
+      for (final row in distanceRows) {
+        final key =
+            '${row['from_location']}|${row['to_location']}|${row['distance_rank']}';
+        if (seenDistances.add(key)) dedupedDistances.add(row);
+      }
+
+      final buf = StringBuffer();
+      buf.writeln('LOCATION CONTEXT FROM SUPABASE:');
+
+      if (dedupedLocations.isNotEmpty) {
+        for (final row in dedupedLocations.values.take(10)) {
+          final name = row['location_name'] as String? ?? '';
+          final system = row['system_name'] as String? ?? '';
+          final type = row['location_type'] as String? ?? '';
+          final parent = row['parent_location'] as String? ?? '';
+          final aliases = row['aliases'] as String? ?? '';
+          final notes = row['notes'] as String? ?? '';
+          buf.write('- $name');
+          if (type.isNotEmpty) buf.write(' [$type]');
+          if (system.isNotEmpty) buf.write(' in $system');
+          if (parent.isNotEmpty) buf.write(', near/under $parent');
+          if (aliases.isNotEmpty) buf.write(', aliases: $aliases');
+          if (notes.isNotEmpty) buf.write(', notes: $notes');
+          buf.writeln();
+        }
+      }
+
+      if (dedupedDistances.isNotEmpty) {
+        buf.writeln('DISTANCE RELATIONSHIPS:');
+        for (final row in dedupedDistances.take(16)) {
+          final from = row['from_location'] as String? ?? '';
+          final to = row['to_location'] as String? ?? '';
+          final rank = row['distance_rank']?.toString() ?? '';
+          final label = row['distance_label'] as String? ?? '';
+          final note = row['travel_note'] as String? ?? '';
+          buf.write('- $from -> $to');
+          if (rank.isNotEmpty) buf.write(' (rank $rank');
+          if (label.isNotEmpty) {
+            if (rank.isNotEmpty) {
+              buf.write(', $label');
+            } else {
+              buf.write(' ($label');
+            }
+          }
+          if (rank.isNotEmpty || label.isNotEmpty) buf.write(')');
+          if (note.isNotEmpty) buf.write(': $note');
+          buf.writeln();
+        }
+      }
+
+      return buf.toString().trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
   /// Smart search — understands location context like "closest to Orison".
   /// Returns compressed context string for the AI.
   Future<String> searchForAiContext(String query) async {
@@ -172,18 +307,12 @@ class SupabaseService {
     if (client == null) return '';
 
     try {
-      final q = query.toLowerCase();
-
-      // Detect location references in the query
-      final locationTerms = <String>[];
-      for (final entry in _locationAliases.entries) {
-        if (q.contains(entry.key)) {
-          locationTerms.addAll(entry.value);
-        }
-      }
+      final locationTerms = _extractLocationTerms(query);
+      final locationContext = await _buildLocationContext(client, locationTerms);
 
       // Extract potential item-name words
-      final words = q
+      final words = query
+          .toLowerCase()
           .split(RegExp(r'[\s\W]+'))
           .where((w) => w.length > 2 && !_stopWords.contains(w))
           .take(6)
@@ -263,7 +392,12 @@ class SupabaseService {
         buf.writeln('${entry.key}:${minBuy ?? '-'}b/${maxSell ?? '-'}s[${locs.take(6).join(' | ')}]');
       }
 
-      return buf.toString();
+      if (locationContext.isNotEmpty) {
+        buf.writeln();
+        buf.writeln(locationContext);
+      }
+
+      return buf.toString().trim();
     } catch (e) {
       return '(Supabase search error: $e)';
     }

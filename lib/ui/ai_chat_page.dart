@@ -76,6 +76,11 @@ If the context does not contain the answer, say so clearly.
 Do not make up prices or locations. Do not claim live data.
 $sourceNote
 
+If Supabase location context is present, use it to answer questions about
+which locations are near each other, relative travel distance, and what is
+closest to a named place. Prefer explicit Supabase distance relationships over
+general world knowledge.
+
 STAR CITIZEN LOCATION MAP:
 STANTON SYSTEM:
   Hurston (planet): Lorville city (TDD, shops), HDMS outposts on moons
@@ -111,6 +116,10 @@ If asked about ship parts, tell the user to check the Market tab directly.
 
 CATALOG FORMAT: ItemName:MINBUYb/MAXSELLs[Location1 | Location2 | ...]
 b=buy price aUEC (what player pays), s=sell price aUEC (what player receives), -=not available
+
+If the catalog context includes a "LOCATION CONTEXT FROM SUPABASE" section,
+use that section when the user asks about proximity, nearby places, route
+comparisons, or relative distance.
 
 CATALOG:
 $catalog
