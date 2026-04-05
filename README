@@ -1,6 +1,6 @@
 1. Go to the settings page and add your OpenAI API or GroqAI API key.
 2. Add your UEX API for commodities and items.
-3. Create a project on https://supabase.com, on SQL editor paste: 
+3. Create a project on https://supabase.com, on SQL editor paste and run: 
       create table catalog_offers (
         id bigint generated always as identity primary key,
         item_name text not null,
@@ -10,6 +10,74 @@
         sell_auec bigint
       );
       create index on catalog_offers (item_name);
+4. Then replace and run:
+                  create table if not exists sc_locations (
+                    id bigint generated always as identity primary key,
+                    location_name text not null unique,
+                    system_name text not null,
+                    location_type text,
+                    parent_location text,
+                    aliases text,
+                    notes text
+                  );
+
+                  create index if not exists idx_sc_locations_name on sc_locations (location_name);
+                  create index if not exists idx_sc_locations_system on sc_locations (system_name);
+
+                  create table if not exists sc_location_distances (
+                    id bigint generated always as identity primary key,
+                    from_location text not null,
+                    to_location text not null,
+                    distance_rank int not null,
+                    distance_label text,
+                    travel_note text
+                  );
+
+                  create index if not exists idx_sc_location_distances_from on sc_location_distances (from_location);
+                  create index if not exists idx_sc_location_distances_to on sc_location_distances (to_location);
+5. Then replace and run:
+                  insert into sc_locations (location_name, system_name, location_type, parent_location, aliases, notes) values
+                  ('Lorville', 'Stanton', 'city', 'Hurston', 'lorville,hurston', 'Main Hurston city'),
+                  ('Everus Harbor', 'Stanton', 'station', 'Hurston', 'everus,everus harbor', 'Hurston orbital station'),
+                  ('Orison', 'Stanton', 'city', 'Crusader', 'orison,crusader', 'Main Crusader city'),
+                  ('Seraphim Station', 'Stanton', 'station', 'Crusader', 'seraphim,seraphim station', 'Crusader orbital station'),
+                  ('Area18', 'Stanton', 'city', 'ArcCorp', 'area18,area 18,arccorp', 'Main ArcCorp city'),
+                  ('Baijini Point', 'Stanton', 'station', 'ArcCorp', 'baijini,baijini point', 'ArcCorp orbital station'),
+                  ('New Babbage', 'Stanton', 'city', 'microTech', 'new babbage,microtech', 'Main microTech city'),
+                  ('Port Tressler', 'Stanton', 'station', 'microTech', 'tressler,port tressler', 'microTech orbital station'),
+                  ('Grim HEX', 'Stanton', 'station', 'Yela', 'grim hex,grimhex', 'Station near Yela'),
+                  ('Checkmate Station', 'Pyro', 'station', 'Pyro', 'checkmate,checkmate station', 'Pyro station'),
+                  ('Ruin Station', 'Pyro', 'station', 'Pyro', 'ruin,ruin station', 'Pyro station'),
+                  ('Orbituary', 'Pyro', 'station', 'Pyro', 'orbituary', 'Pyro station');
+6. Then replace and run:
+                  insert into sc_location_distances (from_location, to_location, distance_rank, distance_label, travel_note) values
+                  ('Lorville', 'Everus Harbor', 1, 'very close', 'Same Hurston hub'),
+                  ('Everus Harbor', 'Lorville', 1, 'very close', 'Same Hurston hub'),
+                  
+                  ('Orison', 'Seraphim Station', 1, 'very close', 'Same Crusader hub'),
+                  ('Seraphim Station', 'Orison', 1, 'very close', 'Same Crusader hub'),
+
+                  ('Area18', 'Baijini Point', 1, 'very close', 'Same ArcCorp hub'),
+                  ('Baijini Point', 'Area18', 1, 'very close', 'Same ArcCorp hub'),
+
+                  ('New Babbage', 'Port Tressler', 1, 'very close', 'Same microTech hub'),
+                  ('Port Tressler', 'New Babbage', 1, 'very close', 'Same microTech hub'),
+
+                  ('Lorville', 'Orison', 4, 'far', 'Different major Stanton hub'),
+                  ('Lorville', 'Area18', 4, 'far', 'Different major Stanton hub'),
+                  ('Lorville', 'New Babbage', 4, 'far', 'Different major Stanton hub'),
+
+                  ('Orison', 'Area18', 4, 'far', 'Different major Stanton hub'),
+                  ('Orison', 'New Babbage', 4, 'far', 'Different major Stanton hub'),
+
+                  ('Area18', 'New Babbage', 4, 'far', 'Different major Stanton hub'),
+
+                  ('Lorville', 'Checkmate Station', 5, 'cross-system', 'Pyro is separate from Stanton'),
+                  ('Orison', 'Checkmate Station', 5, 'cross-system', 'Pyro is separate from Stanton'),
+                  ('Area18', 'Checkmate Station', 5, 'cross-system', 'Pyro is separate from Stanton'),
+                  ('New Babbage', 'Checkmate Station', 5, 'cross-system', 'Pyro is separate from Stanton');
+
+
 4. Add your Supabase anon key and project URL.
 5. Enable toggle on Supabase AI mode.
 
