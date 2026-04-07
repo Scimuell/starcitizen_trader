@@ -39,6 +39,48 @@ jobs:
           sizes = [48, 72, 96, 144, 192]
           folders = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']
 
+          def make_foreground(size, monochrome=False):
+              img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+              draw = ImageDraw.Draw(img)
+              center = size // 2
+              cyan = (0, 212, 255, 255)
+              white = (255, 255, 255, 255)
+              fg = white if monochrome else white
+              rim = white if monochrome else cyan
+
+              outer = max(2, size // 18)
+              ring_w = max(2, size // 24)
+              draw.ellipse((outer, outer, size - outer, size - outer), outline=rim, width=ring_w)
+
+              star = [
+                  (center, int(size * 0.14)),
+                  (int(size * 0.60), int(size * 0.41)),
+                  (int(size * 0.86), center),
+                  (int(size * 0.60), int(size * 0.59)),
+                  (center, int(size * 0.86)),
+                  (int(size * 0.40), int(size * 0.59)),
+                  (int(size * 0.14), center),
+                  (int(size * 0.40), int(size * 0.41)),
+              ]
+              draw.polygon(star, fill=fg)
+
+              cut_bg = (0, 0, 0, 0)
+              cut = [
+                  (center, int(size * 0.29)),
+                  (int(size * 0.54), int(size * 0.46)),
+                  (int(size * 0.72), center),
+                  (int(size * 0.54), int(size * 0.54)),
+                  (center, int(size * 0.72)),
+                  (int(size * 0.46), int(size * 0.54)),
+                  (int(size * 0.29), center),
+                  (int(size * 0.46), int(size * 0.46)),
+              ]
+              draw.polygon(cut, fill=cut_bg)
+
+              dot_r = max(2, size // 15)
+              draw.ellipse((center - dot_r, center - dot_r, center + dot_r, center + dot_r), fill=fg)
+              return img
+
           for size, folder in zip(sizes, folders):
               img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
               draw = ImageDraw.Draw(img)
@@ -84,7 +126,30 @@ jobs:
               os.makedirs(out, exist_ok=True)
               img.save(f'{out}/ic_launcher.png')
               img.save(f'{out}/ic_launcher_round.png')
+              make_foreground(size).save(f'{out}/ic_launcher_foreground.png')
+              make_foreground(size, monochrome=True).save(f'{out}/ic_launcher_monochrome.png')
               print(f'Generated {size}x{size} icon for {folder}')
+
+          os.makedirs('android/app/src/main/res/drawable', exist_ok=True)
+          with open('android/app/src/main/res/drawable/ic_launcher_background.xml', 'w', encoding='utf-8') as f:
+              f.write("""<?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+              <solid android:color="#0F141C" />
+          </shape>
+          """)
+
+          os.makedirs('android/app/src/main/res/mipmap-anydpi-v26', exist_ok=True)
+          adaptive = """<?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/ic_launcher_background" />
+              <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+              <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
+          </adaptive-icon>
+          """
+          with open('android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml', 'w', encoding='utf-8') as f:
+              f.write(adaptive)
+          with open('android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml', 'w', encoding='utf-8') as f:
+              f.write(adaptive)
           PYEOF
 
       - run: flutter pub get
