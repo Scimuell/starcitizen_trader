@@ -22,6 +22,63 @@ jobs:
       - name: Generate Windows project if missing
         run: flutter create . --platforms=windows
 
+      - name: Generate Windows app icon
+        run: |
+          python -m pip install pillow
+          python << 'PYEOF'
+          from PIL import Image, ImageDraw
+          import os
+
+          out_dir = r'windows\runner\resources'
+          os.makedirs(out_dir, exist_ok=True)
+          out_path = os.path.join(out_dir, 'app_icon.ico')
+
+          base_size = 512
+          img = Image.new('RGBA', (base_size, base_size), (0, 0, 0, 0))
+          draw = ImageDraw.Draw(img)
+
+          pad = 14
+          rim = 10
+          center = base_size // 2
+          bg = (15, 20, 28, 255)
+          cyan = (0, 212, 255, 255)
+          white = (255, 255, 255, 255)
+
+          draw.ellipse((pad, pad, base_size - pad, base_size - pad), fill=bg)
+          draw.ellipse((pad + rim, pad + rim, base_size - pad - rim, base_size - pad - rim), outline=cyan, width=rim)
+
+          star = [
+              (center, int(base_size * 0.17)),
+              (int(base_size * 0.60), int(base_size * 0.43)),
+              (int(base_size * 0.83), center),
+              (int(base_size * 0.60), int(base_size * 0.57)),
+              (center, int(base_size * 0.83)),
+              (int(base_size * 0.40), int(base_size * 0.57)),
+              (int(base_size * 0.17), center),
+              (int(base_size * 0.40), int(base_size * 0.43)),
+          ]
+          draw.polygon(star, fill=white)
+
+          cut = [
+              (center, int(base_size * 0.29)),
+              (int(base_size * 0.54), int(base_size * 0.46)),
+              (int(base_size * 0.72), center),
+              (int(base_size * 0.54), int(base_size * 0.54)),
+              (center, int(base_size * 0.72)),
+              (int(base_size * 0.46), int(base_size * 0.54)),
+              (int(base_size * 0.29), center),
+              (int(base_size * 0.46), int(base_size * 0.46)),
+          ]
+          draw.polygon(cut, fill=bg)
+
+          dot_r = max(2, base_size // 15)
+          draw.ellipse((center - dot_r, center - dot_r, center + dot_r, center + dot_r), fill=white)
+
+          sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+          img.save(out_path, format='ICO', sizes=sizes)
+          print(f'Wrote {out_path}')
+          PYEOF
+
       - run: flutter pub get
 
       - run: flutter build windows --release
