@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 int? _asAuec(dynamic v) {
@@ -113,8 +112,8 @@ class AppDatabase {
   final Database _db;
 
   static Future<AppDatabase> open() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final path = p.join(dir.path, 'starcitizen_trader.sqlite');
+    final dbRoot = await getDatabasesPath();
+    final path = p.join(dbRoot, 'starcitizen_trader.sqlite');
     final db = await openDatabase(
       path,
       version: 1,
