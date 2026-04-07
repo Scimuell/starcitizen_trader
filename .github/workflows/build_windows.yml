@@ -25,11 +25,11 @@ jobs:
       - name: Generate Windows app icon
         run: |
           python -m pip install pillow
-          python << 'PYEOF'
+          @'
           from PIL import Image, ImageDraw
           import os
 
-          out_dir = r'windows\runner\resources'
+          out_dir = r'windows\\runner\\resources'
           os.makedirs(out_dir, exist_ok=True)
           out_path = os.path.join(out_dir, 'app_icon.ico')
 
@@ -77,7 +77,8 @@ jobs:
           sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
           img.save(out_path, format='ICO', sizes=sizes)
           print(f'Wrote {out_path}')
-          PYEOF
+          '@ | Set-Content -Encoding UTF8 .github\temp_make_icon.py
+          python .github\temp_make_icon.py
 
       - run: flutter pub get
 
